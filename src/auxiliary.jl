@@ -6,7 +6,7 @@ export returns
 Computes the returns of the asset(s) in `p`, one asset per column.
 For each asset/column `j` and each instant/row `i`, we define
 ```math
-rᵢⱼ = (pᵢ₊₁,ⱼ - pᵢⱼ) / pᵢⱼ.
+r_{ij} = \\frac{p_{i+1,j} - p_{ij}}{p_{ij}}.
 ```
 """
 function returns(p :: AbstractVector)

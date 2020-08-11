@@ -1,0 +1,6 @@
+#documenter .docs-sidebar,
+html.theme--documenter-dark #documenter .docs-sidebar {
+  border-right: 4px solid #0927eb;
+  background-color: #1893f8;
+  color: #fff;
+}
