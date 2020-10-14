@@ -165,5 +165,6 @@ data.rename(columns={'^BVSP':'IBOV'}, inplace=True)
 
 data = data[data["IBOV"].notna()]
 
-########data.to_csv('Analise.csv', index=True)  
+# Para exportar
+########data.to_csv('Dados Historicos.csv', index=True)  
 

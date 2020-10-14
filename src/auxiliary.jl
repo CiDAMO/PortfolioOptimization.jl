@@ -15,4 +15,5 @@ end
 
 function returns(p :: AbstractMatrix)
     r = (p[2:end,:] .- p[1:end-1,:]) ./ p[1:end-1,:]
+    return Matrix(r)
 end
