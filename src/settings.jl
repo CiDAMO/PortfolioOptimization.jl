@@ -1,8 +1,5 @@
 using CSV, Dates, DataFrames
 
-
-include("auxiliary.jl")
-
 #Essa função aqui me ajuda a testar. Ela vai sumir
 
 function start()

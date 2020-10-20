@@ -5,9 +5,6 @@ using Statistics
 using LinearAlgebra
 using Gurobi
 
-include("settings.jl")
-
-
 matrixReturn, allAssets, assets = start()
 
 meanAssets = [mean(col) for col in eachcol(matrixReturn)]
