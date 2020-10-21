@@ -1,78 +1,80 @@
-using JuMP, Cbc, Clp, Ipopt, CSV
-using DataFrames
-using Dates
-using Statistics
-using LinearAlgebra
-using Gurobi
+export cvar_model, cvar_model_min_risk, cvar_model_mixed
 
-matrixReturn, allAssets, assets = start()
+"""
+    cvar_model_min_risk(df; options...)
 
-meanAssets = [mean(col) for col in eachcol(matrixReturn)]
+Solve the CVaR model minimizing the risk, i.e.,
 
-iteration    = 10
-numDays      = size(matrixReturn)[1]
-choiceAssets = 5
+    min  CVaR(x)
+    s.to μᵀx ≥ μmin + λ * (μmax - μmin)
+         ∑ᵢ xᵢ = 1, x ≥ 0,
 
-λ            = range(0, 1, length = iteration)
-β            = 0.95
+where `λ` is a keyword argument (defaults to 0.0).
+"""
+cvar_model_min_risk(df::DataFrame; kwargs...) = cvar_model(:min_risk, df, λ=0.0; kwargs...)
 
-matrixWeight  = zeros(allAssets, iteration)
+"""
+    cvar_model_mixed(df; options...)
 
-assetsPortfolio  = Matrix{Union{Nothing, String}}(nothing, choiceAssets, iteration)
-weightPortfolio  = zeros(choiceAssets, iteration)
+Solve the CVaR model minimizing a combination of the risk and return, i.e.,
 
-valor = 0
-cont  = 1
-cont2 = 1
+    min  λ * CVaR(x) - (1 - λ) * μᵀx
+    s.to ∑ᵢ xᵢ = 1, x ≥ 0,
 
-ret_data  = zeros(iteration)
-risk_data = zeros(iteration)
+where `λ` is a keyword argument (defaults to 0.5).
+"""
+cvar_model_mixed(df::DataFrame; kwargs...) = cvar_model(:mixed, df, λ=0.5; kwargs...)
 
-const GRB_ENV = Gurobi.Env()
+"""
+    cvar_model(objective_type, df; options...)
+    cvar_model_min_risk(df; options...)
+    cvar_model_mixed(df; options...)
 
-for k = 1:iteration
-    
-    
-    #model = Model(Gurobi.Optimizer)
-    model = Model(optimizer_with_attributes(() -> Gurobi.Optimizer(GRB_ENV), "OutputFlag" => 0))
+Solve the CVaR model with objective type given by `objective_type`. See the
+specific functions for more details.
+- `:min_risk` = `cvar_model_min_risk`
+- `:mixed` = `cvar_model_mixed`
+"""
+function cvar_model(objective_type::Symbol,
+    df::DataFrame;
+    num_assets::Integer = 0,
+    min_percentage::Float64 = 0.0,
+    λ::Float64 = 0.5,
+    β::Float64 = 0.95,
+    optimizer = if num_assets == 0
+        optimizer_with_attributes(Clp.Optimizer, "LogLevel" => 0)
+    else
+        optimizer_with_attributes(Cbc.Optimizer, "LogLevel" => 0)
+    end
+)
+    @assert 0 ≤ λ ≤ 1
+    μ = mean.(eachcol(df))
+    n = length(μ) # Number of assets
+    m = size(df, 1) # number of days
 
-    @variable(model, u[1:numDays] ≥ 0)
-    @variable(model, x[1:allAssets] ≥ 0)
-    @variable(model, y[1:allAssets], Bin)
+    model = Model(optimizer)
+    μmin, μmax = extrema(μ)
 
-    
-    @variable(model, α )  
-
-    @objective(model, Min,  ( α + ( 1 / ( numDays * ( 1 - β ))) * sum(u) )) 
-    
-    @constraint(model, [j = 1:numDays],  u[j] + α + x' * matrixReturn[j,:] >= 0)
-    
-    @constraint(model,  x' * meanAssets >= λ[k] * maximum(meanAssets) )
-
+    @variable(model, α)
+    @variable(model, x[1:n] ≥ 0)
+    @variable(model, u[1:m] ≥ 0)
+    if objective_type == :mixed
+        @objective(model, Min, λ * α + sum(u) / m / (1 - β) - (1 - λ) * dot(x, μ))
+    elseif objective_type == :min_risk
+        @objective(model, Min, α + sum(u) / m / (1 - β))
+        @constraint(model, dot(x, μ) ≥ μmin + (μmax - μmin) * λ)
+    else
+        throw("Unexpected objective_type = $objective_type")
+    end
     @constraint(model, sum(x) == 1)
-    @constraint(model, sum(y) == choiceAssets)
-    
-    @constraint(model, [i = 1:allAssets],  x[i] <= y[i])
-    @constraint(model, [l = 1:allAssets],  x[l] >= 0.1*y[l])
-
+    @constraint(model, [i=1:m], u[i] + α - sum(df[i,j] * x[j] for j = 1:n) ≥ 0)
+    if num_assets > 0
+        @variable(model, y[1:n], Bin)
+        @constraint(model, [i=1:n],  x[i] <= y[i])
+        @constraint(model, [j=1:n],  x[j] >= min_percentage * y[j])
+        @constraint(model, sum(y) == num_assets)
+    end
     optimize!(model)
 
-    x = value.(x)
-    y = value.(y)
-    
-    ret_data[k]     = meanAssets' * x
-    risk_data[k]   =  objective_value(model)
-
-    cont = 1
-
-    matrixWeight[:,k] = x
-
-    for m = 1:allAssets
-
-        if y[m] >=  0.9
-            assetsPortfolio[cont, k]  = assets[m]
-            weightPortfolio[cont, k]  = round(x[m]*100)
-            cont = cont + 1
-        end
-    end
+    return value.(x)
 end

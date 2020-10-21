@@ -56,7 +56,11 @@ function markowitz(objective_type::Symbol,
     num_assets::Integer = 0,
     min_percentage::Float64 = 0.0,
     λ::Float64 = 0.5,
-    optimizer = num_assets == 0 ? Ipopt.Optimizer : Cbc.Optimizer
+    optimizer = if num_assets == 0
+        optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+    else
+        optimizer_with_attributes(Cbc.Optimizer, "LogLevel" => 0)
+    end
 )
     @assert 0 ≤ λ ≤ 1
     n = length(μ) # Number of assets
@@ -88,60 +92,3 @@ function markowitz(objective_type::Symbol,
 
     return value.(x)
 end
-
-# """
-# Nessa função temos a inicialização de todas as variaveis (colocar numa struct??), aplicamos o modelo n vezes,
-# e criamos os vetores de retorno de cada portfolio e risco, assim como uma matiz com o nome dos ativos criados
-# e a porcentagem de capital alocado para cada ação.
-
-# Preciso criar tambem valores inicias para o caso do usuario não informar (esqueci como faz :( ))
-
-
-# """
-# function IniciateModel(matrixReturn::AbstractMatrix , allAssets::Integer, asset::AbstractString, iteration::Integer, choiceAssets::Integer, percmin::Float64)
-
-#     μ  = [mean(col) for col in eachcol(matrixReturn)]
-#     Σ = cov( Matrix(matrixReturn) )
-
-#     λ           = range(0, 1, length = iteration)
-
-#     ret_data  = zeros(iteration)
-#     risk_data = zeros(iteration)
-#     sharpe    = zeros(iteration)
-
-#     matrixWeight  = zeros(allAssets, iteration)
-
-#     assetsPortfolio  = Matrix{Union{Nothing, String}}(nothing, choiceAssets, iteration)
-#     weightPortfolio  = zeros(choiceAssets, iteration)
-
-#     valor = 0
-#     cont2 = 1
-
-#     GRB_ENV = Gurobi.Env()
-
-#     for k = 1:iteration
-
-#         x, y = Model(μ, Σ, allAssets, choiceAssets, percmin, λ[k])
-
-#         matrixWeight[:, k] = x
-
-#         ret_data[k]  = μ' * x
-#         risk_data[k] = sqrt(x' * Σ*x)
-#         sharpe[k]    =  ret_data[k] / risk_data[k]
-
-#         cont = 1
-
-#         for j = 1:allAssets
-
-#             if y[j] >=  0.9
-#                 assetsPortfolio[cont,k] = asset[j]
-#                 weightPortfolio[cont,k] = round(x[j]*100)
-#                 cont = cont + 1
-#             end
-#         end
-
-#     end
-
-#     return ret_data, risk_data, assetsPortfolio, weightPortfolio
-
-# end
