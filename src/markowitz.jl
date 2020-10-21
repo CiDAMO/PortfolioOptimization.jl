@@ -79,7 +79,7 @@ function markowitz(objective_type::Symbol,
         @objective(model, Max, dot(x, μ))
         @constraint(model, dot(x, Σ, x) ≤ σmin + (σmax - σmin) * λ)
     else
-        throw("Unexpected objective_type = $objective_type")
+        throw(ArgumentError("Unexpected objective_type = `:$objective_type`"))
     end
     @constraint(model, sum(x) == 1)
     if num_assets > 0
