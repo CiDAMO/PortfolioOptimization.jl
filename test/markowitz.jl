@@ -23,8 +23,10 @@ function markowitz_test()
         x = markowitz_mixed(μ, Σ, λ = 1.0)
         @test x ≈ [2 / 3; 1 / 3]
 
+        x = markowitz(:mixed, μ, Σ, num_assets=2, min_percentage=0.1, λ = 0.0)
+        @test x ≈ [0.1; 0.9]
+
         @test_throws ArgumentError("Unexpected objective_type = `:none`") markowitz(:none, μ, Σ)
-        @test_throws ErrorException markowitz(:mixed, μ, Σ, num_assets=2, min_percentage=0.1, λ = 1.0)
     end
 end
 
