@@ -64,7 +64,7 @@ function cvar_model(objective_type::Symbol,
         @objective(model, Min, α + sum(u) / m / (1 - β))
         @constraint(model, dot(x, μ) ≥ μmin + (μmax - μmin) * λ)
     else
-        throw("Unexpected objective_type = $objective_type")
+        throw(ArgumentError("Unexpected objective_type = `:$objective_type`"))
     end
     @constraint(model, sum(x) == 1)
     @constraint(model, [i=1:m], u[i] + α - sum(df[i,j] * x[j] for j = 1:n) ≥ 0)

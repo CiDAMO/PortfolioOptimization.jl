@@ -59,7 +59,9 @@ function markowitz(objective_type::Symbol,
     optimizer = if num_assets == 0
         optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
     else
-        optimizer_with_attributes(Cbc.Optimizer, "LogLevel" => 0)
+        nl_solver= optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+        mip_solver = optimizer_with_attributes(Cbc.Optimizer, "logLevel" => 0)
+        optimizer_with_attributes(Juniper.Optimizer, "nl_solver"=>nl_solver, "mip_solver"=>mip_solver)
     end
 )
     @assert 0 ≤ λ ≤ 1
@@ -79,7 +81,7 @@ function markowitz(objective_type::Symbol,
         @objective(model, Max, dot(x, μ))
         @constraint(model, dot(x, Σ, x) ≤ σmin + (σmax - σmin) * λ)
     else
-        throw("Unexpected objective_type = $objective_type")
+        throw(ArgumentError("Unexpected objective_type = `:$objective_type`"))
     end
     @constraint(model, sum(x) == 1)
     if num_assets > 0
